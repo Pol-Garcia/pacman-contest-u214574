@@ -66,7 +66,10 @@ class ReflexCaptureAgent(CaptureAgent):
         'communication': {},
         'deposited_food': {}, # total food deposited by each agent
         'last_deposited': {}, # food carried at last step by each agent
-        'first': True # to initialize shared data
+        'first_a': True, # to initialize shared data
+        'first_b': True, # to initialize shared data
+        'safe_food_list': [],
+        'food_list': []
     }
 
     # # Access shared data
@@ -114,7 +117,7 @@ class ReflexCaptureAgent(CaptureAgent):
             return best_action
 
         r = random.choice(best_actions)
-        # print("Agent ", self.index, " choosing action ", r, " with value ", max_value, "\n\n\n")
+        #print("Agent ", self.index, " choosing action ", r, " with value ", max_value, "\n\n\n")
         return r
 
     def get_successor(self, game_state, action):
@@ -184,18 +187,22 @@ class ReflexCaptureAgent(CaptureAgent):
         Simulate future positions to avoid ghosts
         """
         # Placeholder for future seeking logic
-        # if dead_end_corner(self, game_state):
-        #     return [True, depth]
+        
         if depth == 0:
             return [False, depth]
+
+        # if dead_end_corner(self, game_state):
+        #     return [True, depth]
         
         actions = game_state.get_legal_actions(self.index)
         
         dead = True
-        dead_depth = depth
+        dead_depth = -1
+        enter = False
 
         for a in actions: # for each action
             if a != Directions.STOP and a != Directions.REVERSE[game_state.get_agent_state(self.index).configuration.direction]: # avoid stop and reverse
+                enter = True
                 successor = game_state.generate_successor(self.index, a)
                 result = self.seek_future(successor, depth-1)
                 dead = dead and result[0]
@@ -203,7 +210,10 @@ class ReflexCaptureAgent(CaptureAgent):
                     return [False, depth]
                 dead_depth = max(dead_depth, result[1])
         
-        return [True, dead_depth]
+        if enter:
+            return [True, dead_depth]
+        else:
+            return [True, depth]
 
 
 class OffensiveReflexAgent(ReflexCaptureAgent):
@@ -215,11 +225,11 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
 
     def get_features(self, game_state, action):
         
-        if self.shared_data['first']:
+        if self.shared_data['first_a']:
             for i in self.get_team(game_state):
                 self.shared_data['last_deposited'][i] = 0
                 self.shared_data['deposited_food'][i] = 0
-            self.shared_data['first'] = False
+            self.shared_data['first_a'] = False
         
         features = util.Counter()
         successor = self.get_successor(game_state, action)
@@ -234,7 +244,7 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
         points_carrying = game_state.get_agent_state(self.index).num_carrying
         my_pos = successor.get_agent_state(self.index).get_position() # get my position
 
-        if points_carrying >= 5:
+        if points_carrying >= 4:
             self.shared_data['team_plan'] = 'return'
             team_plan = 'return'
 
@@ -281,13 +291,13 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
                     if ((self.red and x > border_x) or (not self.red and x < border_x)): # if in enemy territory
                         result = self.seek_future(successor, depth)
                         if result[0]: # if dead
-                            if depth - result[1] + 2 <= min(opponent_distances): # if dead soon
+                            if depth - result[1] + 2 >= min(opponent_distances): # if dead soon
                                 features['dodge'] = 1
-                        # print("Agent ", self.index, " seek_future result: ", result, " depth: ", depth, "\n")
+                        #print("Agent ", self.index, " seek_future result: ", result, " depth: ", depth, "\n")
                     gd = []
                     pd = []
                     for i, dist in enumerate(opponent_distances):
-                        # print("Agent ", self.index, " opponent ", i, " dist: ", dist, "enemy_position:", enemies_positions[i], "my_position", my_pos)
+                        #print("Agent ", self.index, " opponent ", i, " dist: ", dist, "enemy_position:", enemies_positions[i], "my_position", my_pos)
                         
                         if enemies_positions_past[i] is not None:
                             if self.get_maze_distance(enemies_positions_past[i], enemies_positions[i]) != 0:
@@ -296,13 +306,13 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
                             
                             if dist < 4:
                                 pd.append(dist)
-                                # print("Agent ", self.index, " has seen pacman opponent ", i, " dist: ", dist)
+                                #print("Agent ", self.index, " has seen pacman opponent ", i, " dist: ", dist)
                             # elif dist > 10:
                             #     pd.append(0)
                             #     print("Agent ", self.index, " is on top of ghost opponent ", i, " dist: ", dist)
                         else:
                             if dist < 5 and enemies_states[i].scared_timer <= 0:
-                                # print("Agent ", self.index, " has seen ghost opponent ", i, " dist: ", dist)
+                                #print("Agent ", self.index, " has seen ghost opponent ", i, " dist: ", dist)
                                 gd.append(dist)
                                 power_pellet_positions = self.get_capsules(successor)
                                 for pellet_pos in power_pellet_positions:
@@ -324,19 +334,56 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
             enemies_states = [successor.get_agent_state(i) for i in opponent_indices]
             enemies_positions = [e.get_position() for e in enemies_states]
 
+            enemies_states_past = [game_state.get_agent_state(i) for i in opponent_indices]
+            enemies_positions_past = [e.get_position() for e in enemies_states_past]
+
             if any(enemies_positions):
                 opponent_distances = [self.get_maze_distance(my_pos, pos) for pos in enemies_positions if pos is not None]
+
+                
+
                 if opponent_distances:
+                    x,_ = my_pos
+                    border_x = self.get_border_position(successor)
+                    border_x -= 1 if self.red else 0  # Adjust for which side we're on
+                    
+                    if ((self.red and x > border_x) or (not self.red and x < border_x)): # if in enemy territory
+                        result = self.seek_future(successor, depth)
+                        if result[0]: # if dead
+                            if depth - result[1] + 2 >= min(opponent_distances): # if dead soon
+                                features['dodge'] = 1
+                        #print("Agent ", self.index, " seek_future result: ", result, " depth: ", depth, "\n")
                     gd = []
                     pd = []
                     for i, dist in enumerate(opponent_distances):
+                        #print("Agent ", self.index, " opponent ", i, " dist: ", dist, "enemy_position:", enemies_positions[i], "my_position", my_pos)
                         
-                        if enemies_states[i].is_pacman or enemies_states[i].scared_timer > 0:
-                            pd.append(dist)
-                        elif dist < 1:
-                            gd.append(dist)
-                    features['closest_ghost_distance'] = min(gd) if gd else 0
-                    features['closest_pacman_distance'] = min(pd) if pd else 0
+                        if enemies_positions_past[i] is not None:
+                            if self.get_maze_distance(enemies_positions_past[i], enemies_positions[i]) != 0:
+                                pd.append(0)
+                        if enemies_states[i].is_pacman:
+                            
+                            if dist < 4:
+                                pd.append(dist)
+                                #print("Agent ", self.index, " has seen pacman opponent ", i, " dist: ", dist)
+                            # elif dist > 10:
+                            #     pd.append(0)
+                            #     print("Agent ", self.index, " is on top of ghost opponent ", i, " dist: ", dist)
+                        else:
+                            if dist < 5 and enemies_states[i].scared_timer <= 0:
+                                #print("Agent ", self.index, " has seen ghost opponent ", i, " dist: ", dist)
+                                gd.append(dist)
+                                power_pellet_positions = self.get_capsules(successor)
+                                for pellet_pos in power_pellet_positions:
+                                    if self.get_maze_distance(my_pos, pellet_pos) < 4:
+                                        features['power_pellet'] = self.get_maze_distance(my_pos, pellet_pos)
+                        
+                        self.shared_data['last_seen_positions'][i] = enemies_positions[i]
+                            
+                                
+
+                    features['closest_ghost_distance'] = min(gd) if gd else 5
+                    features['closest_pacman_distance'] = min(pd) if pd else 6
         
         
             # noisy_distances = successor.get_agent_distances() # array of distances to all agents with noise
@@ -347,12 +394,12 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
         
         s = self.distance_to_border(game_state, my_pos)
             
-        # print("Agent ", self.index, " plan: ", team_plan, " carrying: ", points_carrying, "action:", action, features, "distance_to_border:", s, "my_pos:", my_pos, "\n")
+        #print("Agent ", self.index, " plan: ", team_plan, " carrying: ", points_carrying, "action:", action, features, "distance_to_border:", s, "my_pos:", my_pos, "\n")
             
         return features
 
     def get_weights(self, game_state, action):
-        return {'successor_score': 100, 'distance_to_food': -1, 'closest_ghost_distance': 2, 'closest_pacman_distance': -10, 'power_pellet' : 5, 'distance_to_border': -1, 'stop': -1000, 'dodge': -1000}
+        return {'successor_score': 100, 'distance_to_food': -1, 'closest_ghost_distance': 2, 'closest_pacman_distance': -10, 'power_pellet' : -5, 'distance_to_border': -1, 'stop': -1000, 'dodge': -1000}
 
 
 class DefensiveReflexAgent(ReflexCaptureAgent):
@@ -364,11 +411,42 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
     """
 
     def get_features(self, game_state, action):
+
+        layout = game_state.data.layout
+        width = layout.width
+        height = layout.height
+        quarter_width = layout.width // 6
+
+        if self.shared_data['first_b']:
+            print('first')
+            self.shared_data['safe_food_list'] = self.get_food_you_are_defending(game_state).as_list()
+            self.shared_data['food_list'] = list(
+                filter(lambda food: (
+                    food[0] >= quarter_width and           # x >= quarter width
+                    food[1] >= 3 and                       # y >= 3 (not too close to bottom)
+                    food[1] <= height - 4 and              # y <= height - 4 (not too close to top)
+                    food[0] <= width - 5                   # x <= width - 5 (not too close to right)
+                ), self.shared_data['safe_food_list'])
+            )
+            self.shared_data['first_b'] = False
+        
+        print('second')
+        if len(self.shared_data['food_list']) < 2:
+            self.shared_data['food_list'] = list(
+                filter(lambda food: (
+                    food[0] >= quarter_width and           # x >= quarter width
+                    food[1] >= 3 and                       # y >= 3 (not too close to bottom)
+                    food[1] <= height - 4 and              # y <= height - 4 (not too close to top)
+                    food[0] <= width - 5                   # x <= width - 5 (not too close to right)
+                ), self.shared_data['safe_food_list'])
+            )
+
         features = util.Counter()
         successor = self.get_successor(game_state, action)
 
         my_state = successor.get_agent_state(self.index)
         my_pos = my_state.get_position()
+        
 
         # Computes whether we're on defense (1) or offense (0)
         features['on_defense'] = 1
@@ -381,6 +459,19 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
         if len(invaders) > 0:
             dists = [self.get_maze_distance(my_pos, a.get_position()) for a in invaders]
             features['invader_distance'] = min(dists)
+            
+            if game_state.get_agent_state(self.index).scared_timer > 0 : #not work
+                if features['invader_distance'] == 0:
+                    features['invader_distance'] = 5 # to avoid going on top of invader when scared
+        else:
+            if len(self.shared_data['food_list'] ) > 0:  # This should always be True,  but better safe than sorry
+                distances = [self.get_maze_distance(my_pos, food) for food in self.shared_data['food_list']]
+                min_distance = min(distances)
+                features['distance_to_food'] = min_distance
+                if min_distance == 0:
+                    min_index = distances.index(min_distance)
+                    
+                    self.shared_data['food_list'].pop(min_index)
 
         if action == Directions.STOP: features['stop'] = 1
         rev = Directions.REVERSE[game_state.get_agent_state(self.index).configuration.direction]
@@ -389,7 +480,7 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
         return features
 
     def get_weights(self, game_state, action):
-        return {'num_invaders': -1000, 'on_defense': 100, 'invader_distance': -10, 'stop': -100, 'reverse': -2}
+        return {'num_invaders': -1000, 'distance_to_food': -1, 'on_defense': 100, 'invader_distance': -10, 'stop': -100, 'reverse': -2}
 
 
 def index_from_indeces(indeces, index):
@@ -410,7 +501,7 @@ def dead_end_corner(self, game_state):
 
     for dx, dy in directions:
         nx, ny = x + dx, y + dy
-        if layout.is_wall(nx, ny):
+        if layout.is_wall((nx, ny)):
             walls += 1
 
     return walls >= 3

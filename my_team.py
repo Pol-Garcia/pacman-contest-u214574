@@ -75,7 +75,9 @@ class ReflexCaptureAgent(CaptureAgent):
         'time': 0,
         'time_enter': 0,
         'row_time': [],
-        'top': True
+        'top': True,
+        'kill': False,
+        'invader_distance': 0
     }
 
     # # Access shared data
@@ -97,15 +99,15 @@ class ReflexCaptureAgent(CaptureAgent):
         Picks among the actions with the highest Q(s,a).
         """
         
-        print("--------------- DEBUGGING ---------------\n")
+        # print("--------------- DEBUGGING ---------------\n")
         self.shared_data['time'] += 1 # general time
-        print("|    Agent ", self.index," Time: ", self.shared_data['time'])
+        # print("|    Agent ", self.index," Time: ", self.shared_data['time'])
         
         if game_state.get_agent_state(self.index).is_pacman: # If I am pacman [bdta] then add time
             self.shared_data['time_enter'] += 1 # add 1 second
         else:
             self.shared_data['time_enter'] = 0 # time is 0 ( I have not entered enemy territory)
-        print("|    Time since entered: ", self.shared_data['time_enter'],"s\n")
+        # print("|    Time since entered: ", self.shared_data['time_enter'],"s\n")
 
         self.shared_data['first_c'] = True # general time
 
@@ -116,12 +118,12 @@ class ReflexCaptureAgent(CaptureAgent):
         # start = time.time()
         values = [self.evaluate(game_state, a) for a in actions]
         # print 'eval time for agent %d: %.4f' % (self.index, time.time() - start)
-        print("---------------- ACTIONS ----------------\n")
-        print("|    Possible: \n",actions)
-        for i, v in enumerate(values):
-            print("|    ",actions[i]," has value ",v,"\n")
-        print("-----------------------------------------\n")
-        max_value = max(values)
+        # print("---------------- ACTIONS ----------------\n")
+        # print("|    Possible: \n",actions)
+        # for i, v in enumerate(values):
+        #     # print("|    ",actions[i]," has value ",v,"\n")
+        # # print("-----------------------------------------\n")
+        # max_value = max(values)
         best_actions = [a for a, v in zip(actions, values) if v == max_value]
 
         food_left = len(self.get_food(game_state).as_list())
@@ -139,8 +141,8 @@ class ReflexCaptureAgent(CaptureAgent):
             return best_action
 
         r = random.choice(best_actions)
-        print("|    FINAL DECISION: \n")
-        print("|    Agent ", self.index, " choosing going ", r, " with value ", max_value, "\n\n\n\n")
+        # print("|    FINAL DECISION: \n")
+        # print("|    Agent ", self.index, " choosing going ", r, " with value ", max_value, "\n\n\n\n")
         return r
 
     def get_successor(self, game_state, action):
@@ -291,7 +293,7 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
 
     def get_features(self, game_state, action):
         
-        print("-----------------------------------------\n")
+        # print("-----------------------------------------\n")
 
         layout = game_state.data.layout                     # Layout of the game (for width, height, ...)
         width = layout.width
@@ -315,7 +317,7 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
         team_plan = self.shared_data['team_plan']           # Team plan
         range_stuck = 1
         max_turns_stuck = 48
-        depth = 5                                           # Depth of the SeekFuture Algorithm
+        depth = 6                                           # Depth of the SeekFuture Algorithm
         points_return = 4 - (self.shared_data['time_enter'] // 15)
 
         for_len = 1 + 2*range_stuck
@@ -330,17 +332,17 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
         s = self.distance_to_border(game_state, my_pos)                      # Maze distance from Position [adta] to border (where I deposit points and become ghost)
 
         
-        print("|    Action",action,"\n|    ",game_state.get_agent_state(self.index).get_position(),"-->",successor.get_agent_state(self.index).get_position(),"\n|    Time: ",self.shared_data['time'],"\n\n")
+        # print("|    Action",action,"\n|    ",game_state.get_agent_state(self.index).get_position(),"-->",successor.get_agent_state(self.index).get_position(),"\n|    Time: ",self.shared_data['time'],"\n\n")
         if action == Directions.STOP: 
             features['stop'] = 1
-            print("-----------------------------------------\n")
+            # print("-----------------------------------------\n")
             return features
         
-        print("-------------- OTHER VALUES --------------\n")
-        print("|    <Initially>\n")
-        print("|    Border Position: ",self.get_border_position(game_state),"\n")
-        print("|    Plan: ",team_plan,"\n")
-        print("|    Points: ",points_return,"\n")
+        # print("-------------- OTHER VALUES --------------\n")
+        # print("|    <Initially>\n")
+        # print("|    Border Position: ",self.get_border_position(game_state),"\n")
+        # print("|    Plan: ",team_plan,"\n")
+        # print("|    Points: ",points_return,"\n")
 
         xz, yz = game_state.get_agent_state(self.index).get_position()
         # if xz == self.get_enemy_border_position(game_state):
@@ -357,7 +359,7 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
         #         if opponent_distances and points_carrying > 0:
         #             self.shared_data['team_plan'] = 'drift' # iniciate return plan globally
         #             team_plan = 'drift'                     # iniciate return plan in this action
-        #             print("|    Starting to Drift !!!\n")
+        #             # print("|    Starting to Drift !!!\n")
         #             reset = True
         #             y_no = yz
         #             self.shared_data['top'] = y_no < height // 2
@@ -380,12 +382,12 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
                     if final >= max_val_stuck and reset == False:
                         self.shared_data['team_plan'] = 'drift' # iniciate return plan globally
                         team_plan = 'drift'                     # iniciate return plan in this action
-                        print("|    Starting to Drift !!!\n")
+                        # print("|    Starting to Drift !!!\n")
                         reset = True
                         y_no = yf
                         self.shared_data['top'] = y_no < height // 2
                     self.shared_data['row_time'][c] = final
-                print("|    Height values: ",self.shared_data['row_time'] ,"\n")
+                # print("|    Height values: ",self.shared_data['row_time'] ,"\n")
         
         
 
@@ -393,7 +395,7 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
             for h in range(height):
                 self.shared_data['row_time'][h] = 0
             reset = False
-            print("|    Height values 2: ",self.shared_data['row_time'] ,"\n")
+            # print("|    Height values 2: ",self.shared_data['row_time'] ,"\n")
         
         if team_plan == 'drift':
             xg, yg = my_pos
@@ -414,35 +416,42 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
         #     if points_carrying > 0:
         #         self.shared_data['team_plan'] = 'return' # iniciate return plan globally
         #         team_plan = 'return'                     # iniciate return plan in this action
-        #         print("RETURN, Close to Border with points\n")
+        #         # print("RETURN, Close to Border with points\n")
 
 
 
             
         
 
-        
+        if self.shared_data['kill']:
+            self.shared_data['kill'] = False
+            if points_carrying > 0:
+                self.shared_data['team_plan'] = 'return' # iniciate return plan globally
+                team_plan = 'return'                     # iniciate return plan in this action
+                # print("RETURN, run for your life\n")
+
 
         if (points_carrying >= points_return): # If I have a lot of points
             self.shared_data['team_plan'] = 'return' # iniciate return plan globally
             team_plan = 'return'                     # iniciate return plan in this action
-            print("RETURN, too many points\n")
+            # print("RETURN, too many points\n")
 
-        elif self.shared_data['time_enter'] > 40:       # if it's been a while and I have not returned
+        elif self.shared_data['time_enter'] > 20:       # if it's been a while and I have not returned
             self.shared_data['team_plan'] = 'return'    # Return Glob
             team_plan = 'return'                        # Return Loc
-            print("RETURN, too much time\n")
+            # print("RETURN, too much time\n")
 
         elif points_carrying == 0 and self.shared_data['last_deposited'][self.index] != 0: # You deposited food or died
             if my_pos == self.start: # If you died (you are at the start position)
                 self.shared_data['team_plan'] = 'search'
                 team_plan = 'search'
-                print("SEARCH, you died\n")
+                # print("SEARCH, you died\n")
             else: # You deposited food
                 self.shared_data['deposited_food'][self.index] = self.shared_data['last_deposited'][self.index] + self.shared_data['deposited_food'][self.index]
                 self.shared_data['team_plan'] = 'drift'
                 team_plan = 'drift'
-                print("SEARCH, you deposited\n")
+                # print("SEARCH, you deposited\n")
+        
 
         
 
@@ -463,12 +472,12 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
 
             enemies_states_past = [game_state.get_agent_state(i) for i in opponent_indices]
             enemies_positions_past = [e.get_position() for e in enemies_states_past]
-            print("|    Enemy Positions: ",enemies_positions,"\n")
+            # print("|    Enemy Positions: ",enemies_positions,"\n")
 
             if any(enemies_positions):
                 opponent_distances = [self.get_maze_distance(my_pos, pos) if pos is not None else -1 for pos in enemies_positions]
 
-                print("|    Enemy Distances: ",opponent_distances,"\n")
+                # print("|    Enemy Distances: ",opponent_distances,"\n")
 
                 
 
@@ -482,34 +491,34 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
                     pd = []
                     for i, dist in enumerate(opponent_distances):
                         if dist != -1:
-                            print("|    Agent ", self.index, " opponent ", i, " dist: ", dist, "enemy_position:", enemies_positions[i], "my_position", my_pos,"\n")
+                            # print("|    Agent ", self.index, " opponent ", i, " dist: ", dist, "enemy_position:", enemies_positions[i], "my_position", my_pos,"\n")
                             
                             
                             if enemies_positions_past[i] is not None:
                                 if self.get_maze_distance(enemies_positions_past[i], enemies_positions[i]) != 0:
                                     pd.append(0)
-                            print("|    MP: ", my_pos," PP: ",game_state.get_agent_state(self.index).get_position()," Dist: ",self.get_maze_distance(my_pos, game_state.get_agent_state(self.index).get_position()))
+                            # print("|    MP: ", my_pos," PP: ",game_state.get_agent_state(self.index).get_position()," Dist: ",self.get_maze_distance(my_pos, game_state.get_agent_state(self.index).get_position()))
                             if self.get_maze_distance(my_pos, game_state.get_agent_state(self.index).get_position()) > 2:
                                 gd.append(0)
                             
-                            print("|    Enemy: ",i," is pacman ",enemies_states[i].is_pacman,"\n")
+                            # print("|    Enemy: ",i," is pacman ",enemies_states[i].is_pacman,"\n")
                             if enemies_states[i].is_pacman:
                                 
                                 if dist < 4:
                                     pd.append(dist)
-                                    print("Agent ", self.index, " has seen pacman opponent ", i, " dist: ", dist)
+                                    # print("Agent ", self.index, " has seen pacman opponent ", i, " dist: ", dist)
                                 # elif dist > 10:
                                 #     pd.append(0)
-                                #     print("Agent ", self.index, " is on top of ghost opponent ", i, " dist: ", dist)
+                                #     # print("Agent ", self.index, " is on top of ghost opponent ", i, " dist: ", dist)
                             else:
                                 if ((self.red and x > border_x) or (not self.red and x < border_x)): # if in enemy territory
                                     result = self.seek_future(successor, depth)
                                     if result[0]: # if dead
-                                        #if depth - result[1] + 3 >= min(opponent_distances) or towards_end_corner(self, game_state): # if dead soon
-                                        features['dodge'] = 1
-                                    print("Agent ", self.index, " seek_future result: ", result, " depth: ", depth, "\n")
+                                        if depth - result[1] + 3 >= min(opponent_distances) or towards_end_corner(self, game_state): # if dead soon
+                                            features['dodge'] = 1
+                                    # print("Agent ", self.index, " seek_future result: ", result, " depth: ", depth, "\n")
                                 if dist < 5 and enemies_states[i].scared_timer <= 0:
-                                    print("Agent ", self.index, " has seen ghost opponent ", i, " dist: ", dist)
+                                    # print("Agent ", self.index, " has seen ghost opponent ", i, " dist: ", dist)
                                     gd.append(dist)
                                     power_pellet_positions = self.get_capsules(successor)
                                     for pellet_pos in power_pellet_positions:
@@ -549,7 +558,7 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
                     pd = []
                     for i, dist in enumerate(opponent_distances):
                         if dist != -1:
-                            print("Agent ", self.index, " opponent ", i, " dist: ", dist, "enemy_position:", enemies_positions[i], "my_position", my_pos)
+                            # print("Agent ", self.index, " opponent ", i, " dist: ", dist, "enemy_position:", enemies_positions[i], "my_position", my_pos)
                             
                             if enemies_positions_past[i] is not None:
                                 if self.get_maze_distance(enemies_positions_past[i], enemies_positions[i]) != 0:
@@ -560,19 +569,19 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
                                 
                                 if dist < 4:
                                     pd.append(dist)
-                                    print("Agent ", self.index, " has seen pacman opponent ", i, " dist: ", dist)
+                                    # print("Agent ", self.index, " has seen pacman opponent ", i, " dist: ", dist)
                                 # elif dist > 10:
                                 #     pd.append(0)
-                                #     print("Agent ", self.index, " is on top of ghost opponent ", i, " dist: ", dist)
+                                #     # print("Agent ", self.index, " is on top of ghost opponent ", i, " dist: ", dist)
                             else:
                                 if ((self.red and x > border_x) or (not self.red and x < border_x)): # if in enemy territory
                                     result = self.seek_future(successor, depth)
                                     if result[0]: # if dead
-                                        #if depth - result[1] + 3 >= min(opponent_distances) or towards_end_corner(self, game_state): # if dead soon
-                                        features['dodge'] = 1
-                                    print("Agent ", self.index, " seek_future result: ", result, " depth: ", depth, "\n")
+                                        if depth - result[1] + 3 >= min(opponent_distances) or towards_end_corner(self, game_state): # if dead soon
+                                            features['dodge'] = 1
+                                    # print("Agent ", self.index, " seek_future result: ", result, " depth: ", depth, "\n")
                                 if dist < 5 and enemies_states[i].scared_timer <= 0:
-                                    print("Agent ", self.index, " has seen ghost opponent ", i, " dist: ", dist)
+                                    # print("Agent ", self.index, " has seen ghost opponent ", i, " dist: ", dist)
                                     gd.append(dist)
                                     power_pellet_positions = self.get_capsules(successor)
                                     for pellet_pos in power_pellet_positions:
@@ -614,7 +623,7 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
                     pd = []
                     for i, dist in enumerate(opponent_distances):
                         if dist != -1:
-                            print("Agent ", self.index, " opponent ", i, " dist: ", dist, "enemy_position:", enemies_positions[i], "my_position", my_pos)
+                            # print("Agent ", self.index, " opponent ", i, " dist: ", dist, "enemy_position:", enemies_positions[i], "my_position", my_pos)
                             
                             if enemies_positions_past[i] is not None:
                                 if self.get_maze_distance(enemies_positions_past[i], enemies_positions[i]) != 0:
@@ -625,19 +634,19 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
                                 
                                 if dist < 4:
                                     pd.append(dist)
-                                    print("Agent ", self.index, " has seen pacman opponent ", i, " dist: ", dist)
+                                    # print("Agent ", self.index, " has seen pacman opponent ", i, " dist: ", dist)
                                 # elif dist > 10:
                                 #     pd.append(0)
-                                #     print("Agent ", self.index, " is on top of ghost opponent ", i, " dist: ", dist)
+                                #     # print("Agent ", self.index, " is on top of ghost opponent ", i, " dist: ", dist)
                             else:
                                 if ((self.red and x > border_x) or (not self.red and x < border_x)): # if in enemy territory
                                     result = self.seek_future(successor, depth)
                                     if result[0]: # if dead
-                                        #if depth - result[1] + 3 >= min(opponent_distances) or towards_end_corner(self, game_state): # if dead soon
-                                        features['dodge'] = 1
-                                    print("Agent ", self.index, " seek_future result: ", result, " depth: ", depth, "\n")
+                                        if depth - result[1] + 3 >= min(opponent_distances) or towards_end_corner(self, game_state): # if dead soon
+                                            features['dodge'] = 1
+                                    # print("Agent ", self.index, " seek_future result: ", result, " depth: ", depth, "\n")
                                 if dist < 5 and enemies_states[i].scared_timer <= 0:
-                                    print("Agent ", self.index, " has seen ghost opponent ", i, " dist: ", dist)
+                                    # print("Agent ", self.index, " has seen ghost opponent ", i, " dist: ", dist)
                                     gd.append(dist)
                                     power_pellet_positions = self.get_capsules(successor)
                                     for pellet_pos in power_pellet_positions:
@@ -658,19 +667,19 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
             #     features['closest_opponent_distance'] = min(opponent_distances)
         
         
-        print("|    Features: \n",features,"\n\n")
-        print("|    Other Info:\n")
+        # print("|    Features: \n",features,"\n\n")
+        # print("|    Other Info:\n")
 
-        print( "Carrying: ", points_carrying, "distance_to_border:", s, "my_pos:", my_pos, "\n")
+        # print( "Carrying: ", points_carrying, "distance_to_border:", s, "my_pos:", my_pos, "\n")
             
         
-        print("")
+        # print("")
         # if self.get_maze_distance(my_pos, game_state.get_agent_state(self.index).get_position()) > 10:
         #     features['closest_ghost_distance'] = 0.5
         return features
 
     def get_weights(self, game_state, action):
-        return {'successor_score': 100, 'distance_to_food': -1, 'closest_ghost_distance': 20, 'closest_pacman_distance': -2, 'power_pellet' : -5, 'distance_to_border': -1, 'distance_to_td' : -1, 'stop': -1000, 'dodge': -1000}
+        return {'successor_score': 100, 'distance_to_food': -1, 'closest_ghost_distance': 10, 'closest_pacman_distance': -2, 'power_pellet' : -5, 'distance_to_border': -1, 'distance_to_td' : -1, 'stop': -1000, 'dodge': -1000}
 
 
 class DefensiveReflexAgent(ReflexCaptureAgent):
@@ -689,7 +698,7 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
         quarter_width = layout.width // 4
 
         if self.shared_data['first_b']:
-            print('first')
+            # print('first')
             self.shared_data['safe_food_list'] = self.get_food_you_are_defending(game_state).as_list()
             self.shared_data['food_list'] = list(
                 filter(lambda food: (
@@ -701,7 +710,7 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
             )
             self.shared_data['first_b'] = False
         
-        #print('second')
+        ## print('second')
         if len(self.shared_data['food_list']) < 2:
             self.shared_data['food_list'] = list(
                 filter(lambda food: (
@@ -727,22 +736,52 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
         enemies = [successor.get_agent_state(i) for i in self.get_opponents(successor)]
         invaders = [a for a in enemies if a.is_pacman and a.get_position() is not None]
         features['num_invaders'] = len(invaders)
+        
         if len(invaders) > 0:
             dists = [self.get_maze_distance(my_pos, a.get_position()) for a in invaders]
             features['invader_distance'] = min(dists)
+            self.shared_data['invader_distance'] = min(dists)
             
             if game_state.get_agent_state(self.index).scared_timer > 0 : #not work
                 if features['invader_distance'] == 0:
                     features['invader_distance'] = 5 # to avoid going on top of invader when scared
         else:
-            if len(self.shared_data['food_list'] ) > 0:  # This should always be True,  but better safe than sorry
-                distances = [self.get_maze_distance(my_pos, food) for food in self.shared_data['food_list']]
-                min_distance = min(distances)
-                features['distance_to_food'] = min_distance
-                if min_distance == 0:
-                    min_index = distances.index(min_distance)
-                    
-                    self.shared_data['food_list'].pop(min_index)
+            if self.shared_data['invader_distance'] < 3:
+                self.shared_data['kill'] = True
+                self.shared_data['invader_distance'] = 6
+
+            # No invaders - patrol near border
+            border_x = self.get_border_position(game_state)
+            
+           
+            if not hasattr(self, 'patrol_index'):
+                self.patrol_index = 0
+            
+            
+            layout = game_state.data.layout
+            height = layout.height
+            
+            
+            patrol_y_positions = [
+                height // 2,          
+                height // 2 + 3,        
+                height // 2 - 3        
+            ]
+            
+            valid_patrol_points = []
+            for y in patrol_y_positions:
+                patrol_pos = (border_x, y)
+                if (0 <= patrol_pos[0] < layout.width and 
+                    0 <= patrol_pos[1] < layout.height and
+                    not game_state.has_wall(patrol_pos[0], patrol_pos[1])):
+                    valid_patrol_points.append(patrol_pos)
+            
+            if valid_patrol_points:
+                target_patrol = valid_patrol_points[self.patrol_index % len(valid_patrol_points)]
+                features['patrol_distance'] = self.get_maze_distance(my_pos, target_patrol)
+                
+                if features['patrol_distance'] < 2:
+                    self.patrol_index += 1
 
         if action == Directions.STOP: features['stop'] = 1
         rev = Directions.REVERSE[game_state.get_agent_state(self.index).configuration.direction]
@@ -751,7 +790,7 @@ class DefensiveReflexAgent(ReflexCaptureAgent):
         return features
 
     def get_weights(self, game_state, action):
-        return {'num_invaders': -1000, 'distance_to_food': -1, 'on_defense': 100, 'invader_distance': -10, 'stop': -100, 'reverse': -2}
+        return {'num_invaders': -1000, 'distance_to_food': -1, 'on_defense': 100, 'invader_distance': -10, 'stop': -100, 'reverse': -2, 'patrol_distance': -1}
 
 
 def index_from_indeces(indeces, index):

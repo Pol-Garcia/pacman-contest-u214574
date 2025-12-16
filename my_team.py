@@ -123,7 +123,7 @@ class ReflexCaptureAgent(CaptureAgent):
         # for i, v in enumerate(values):
         #     # print("|    ",actions[i]," has value ",v,"\n")
         # # print("-----------------------------------------\n")
-        # max_value = max(values)
+        max_value = max(values)
         best_actions = [a for a, v in zip(actions, values) if v == max_value]
 
         food_left = len(self.get_food(game_state).as_list())
